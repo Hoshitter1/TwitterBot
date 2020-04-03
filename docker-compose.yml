@@ -1,0 +1,32 @@
+version: '3'
+services:
+  src:
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    container_name: "python_container"
+    command: sh ./utils/start.sh
+    ports:
+      - 8000:8000
+    volumes:
+      - "./src:/opt/apps/"
+    links:
+      - db
+    tty: true
+    stdin_open: true
+  db:
+    image: postgres
+    container_name: "twitter_db"
+    environment:
+      - POSTGRES_USER=user_dev
+      - POSTGRES_PASSWORD=pass_dev
+      - POSTGRES_DB=develop_db
+    ports:
+      - 5432:5432
+    volumes:
+      - "dbdata:/var/lib/postgresql/data"
+    tty: true
+    stdin_open: true
+volumes:
+#  Shared data between django and db
+  dbdata:
