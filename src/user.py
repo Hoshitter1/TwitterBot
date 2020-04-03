@@ -13,7 +13,7 @@ from models import users
 
 
 @dataclass
-class User(BotBase):
+class UserBot(BotBase):
     user_info_cache: Optional[models.User] = None
 
     def fetch_user_info(self, **kwargs) -> models.User:
@@ -120,8 +120,7 @@ class User(BotBase):
         session = self.get_session
         filtered_ids: List[int] = []
         for id_ in user_ids:
-            user_in_db = session.query(users.ValuableUsers). \
-                filter(users.ValuableUsers.user_id == id_).first()
+            user_in_db = session.query(users.ValuableUsers).filter(users.ValuableUsers.user_id == id_).first()
             if user_in_db is not None:
                 continue
             filtered_ids.append(id_)
@@ -202,16 +201,22 @@ class User(BotBase):
             for id_ in self.fetch_user_follower_ids(famous_guy)
         }
 
-        self.SLACK_INFO.send_message('2/4: filter to avoid saving duplicate id')
+        self.SLACK_INFO.send_message(
+            f'2/4: filter to avoid saving duplicate id. all_ids:{len(all_ids)}'
+        )
         users_filtered_if_existed: List[int] = self.filter_by_existence_in_database(all_ids)
 
-        self.SLACK_INFO.send_message('3/4: filter based on their values')
+        self.SLACK_INFO.send_message(
+            f'3/4: filter based on their values. users_filtered_if_existed:{len(users_filtered_if_existed)}'
+        )
         users_filtered_by_value: List[models.User] = [
             self.user_info_cache for id_ in users_filtered_if_existed
             if self.is_valuable_user(id_)
         ]
 
-        self.SLACK_INFO.send_message('4/4: Save all of them')
+        self.SLACK_INFO.send_message(
+            f'4/4: Save all of them. users_filtered_by_value{len(users_filtered_by_value)}'
+        )
         self.save_users(users_filtered_by_value)
 
 
@@ -220,15 +225,13 @@ if __name__ == '__main__':
     This process should be implemented before executing main twitter bot
     """
     target_list = 'target_lists/tier1.txt'
-    User.create_table_unless_exists()
+    UserBot.create_table_unless_exists()
     try:
-        User().collect_all_users_and_save_them_in_db(target_list)
+        UserBot().collect_all_users_and_save_them_in_db(target_list)
     except Exception as e:
         # Narrow Exception
         import sys
         tb = sys.exc_info()[2]
         BotBase.SLACK_ERROR.send_message(e.with_traceback(tb))
-        # Narrow the range of exception
-        # Add slack client to notify myself
         raise e
-    User.SLACK_INFO.send_message('The whole process ended! お疲れ様でした!')
+    UserBot.SLACK_INFO.send_message('The whole process ended! お疲れ様でした!')
