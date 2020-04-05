@@ -13,6 +13,7 @@ ref: https://developer.twitter.com/ja/docs/basics/authentication/guides/access-t
 2. access_token_secret.txt
 3. consumer_key.txt
 4. consumer_secret.txt
+5. slack_token.txt
 
 ## 2. Do this
 ```shell script
