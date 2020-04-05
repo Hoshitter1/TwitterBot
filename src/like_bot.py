@@ -202,26 +202,22 @@ class LikeBot(BotBase):
 
 if __name__ == '__main__':
     like_bot = LikeBot()
-    # try:
-    #     like_bot.like_tweet_from_users_in_db(data_num=50)
-    # except Exception as e:
-    #     # TODO: Narrow Exception by creating wrapper
-    #     import sys
-    #
-    #     tb = sys.exc_info()[2]
-    #     BotBase.SLACK_ERROR.send_message(e.with_traceback(tb))
-    #     raise e
-    # UserBot.SLACK_INFO.send_message('The like_tweet_from_users_in_db ended! お疲れ様でした!')
+    try:
+        like_bot.like_tweet_from_users_in_db(data_num=500)
+    except TweepError as e:
+        BotBase.SLACK_ERROR.send_message(
+            'An error occurred from tweepy client.'
+            f'Reason for this error is「{e.reason}」'
+        )
+    except Exception as e:
+        # TODO: Narrow Exception by creating wrapper
+        import sys
 
-    keywords_and_importance: List[Tuple[str, int]] = [
-        # ('MatrixFLow', 10),
-        ('#駆け出しwebデザイナーと繋がりたい', 30),
-        # ('#駆け出しエンジニアと繋がりたい', 10),
-        # ('MatrixFLow', 10),
-        #     TODO: Add more and create property file
-    ]
+        tb = sys.exc_info()[2]
+        BotBase.SLACK_ERROR.send_message(e.with_traceback(tb))
+        raise e
 
-    for keyword, importance in keywords_and_importance:
+    for keyword, importance in TARGET_KEYWORD_AND_IMPORTANCE:
         try:
             like_bot.like_from_keyword(keyword, importance)
         except TweepError as e:
