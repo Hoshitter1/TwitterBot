@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Set, List, Optional, Tuple
+from typing import Set, List, Optional, Union
 import time
 
 import tweepy
@@ -16,7 +16,7 @@ from models import users
 class UserBot(BotBase):
     user_info_cache: Optional[models.User] = None
 
-    def fetch_user_info(self, **kwargs) -> models.User:
+    def fetch_user_info(self, **kwargs) -> Optional[models.User]:
         """
 
         Args:
@@ -27,7 +27,15 @@ class UserBot(BotBase):
         Notes:
             API docs
         """
-        return self.API.get_user(**kwargs)
+        for _ in range(RETRY_NUM):
+            try:
+                return self.API.get_user(**kwargs)
+            except RateLimitError:
+                time.sleep(REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND)
+                self.SLACK_WARNING.send_message('WARNING: Rate limit error occurred! Sleep for 15min..zzzz')
+                continue
+            except Exception:
+                raise Exception('Something is wrong in fetch_user_info.')
 
     def fetch_user_tweet(self, **kwargs) -> models.User:
         """
@@ -40,7 +48,15 @@ class UserBot(BotBase):
         Notes:
             API docs
         """
-        return self.API.user_timeline(**kwargs)
+        for _ in range(RETRY_NUM):
+            try:
+                return self.API.user_timeline(**kwargs)
+            except RateLimitError:
+                time.sleep(REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND)
+                self.SLACK_WARNING.send_message('WARNING: Rate limit error occurred! Sleep for 15min..zzzz')
+                continue
+            except Exception:
+                raise Exception('Something is wrong in fetch_user_info.')
 
     def fetch_user_follower_ids(self, user_id: str) -> Set[int]:
         followers_ids_iter = tweepy.Cursor(self.API.followers_ids, id=user_id).pages()
@@ -72,15 +88,7 @@ class UserBot(BotBase):
         return all_ids
 
     def is_active(self, user: models.User) -> bool:
-        for _ in range(RETRY_NUM):
-            try:
-                tweets = self.fetch_user_tweet(id=user.id)
-            except RateLimitError:
-                self.SLACK_WARNING.send_message(
-                    'WARNING: Rate limit error occurred in is_active Sleep for 15min..zzzz'
-                )
-                continue
-            break
+        tweets = self.fetch_user_tweet(id=user.id)
 
         # Filters from here
         has_tweets = len(tweets) > 0
@@ -90,16 +98,17 @@ class UserBot(BotBase):
         three_days_ago: datetime = datetime.now() - timedelta(days=30)
         return three_days_ago < tweets[0].created_at
 
-    def save_users(self, target_all: List[models.User]) -> None:
+    def save_users(self, target_all: List[models.User], num_likes: int = 0) -> None:
         """
 
         Args:
             target_all:
+            num_likes:
 
         Returns:
 
         Notes:
-            table: user_id(integer) is_friend(boolean) is_liked(boolean)
+            table: user_id(integer) is_friend(boolean) num_likes(int)
         """
         session = self.get_session
         for target in target_all:
@@ -110,7 +119,7 @@ class UserBot(BotBase):
                 user_id=id_,
                 screen_name=screen_name,
                 is_friend=is_friend,
-                is_liked=False
+                num_likes=num_likes
             )
             session.add(vu)
         session.commit()
@@ -127,15 +136,12 @@ class UserBot(BotBase):
         session.close()
         return filtered_ids
 
-    def is_valuable_user(self, user_id: int) -> bool:
-        for _ in range(RETRY_NUM):
-            try:
-                self.user_info_cache = self.fetch_user_info(id=user_id)
-            except RateLimitError:
-                time.sleep(REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND)
-                self.SLACK_WARNING.send_message('WARNING: Rate limit error occurred! Sleep for 15min..zzzz')
-                continue
-            break
+    def is_valuable_user(self, user_id: Union[int, models.User]) -> bool:
+        if isinstance(user_id, int):
+            self.user_info_cache = self.fetch_user_info(id=user_id)
+        else:
+            # TODO: Use elif once type is confirmed and change arg name of user_id
+            self.user_info_cache = user_id
 
         if not self.is_reliable(self.user_info_cache):
             return False
@@ -184,17 +190,15 @@ class UserBot(BotBase):
             return True
         return False
 
-    def collect_all_users_and_save_them_in_db(self, target_list: str):
+    def collect_followers_of_famous_users_and_save_them_in_db(self, famous_guys: List[str]):
         """I know this is a terrible name
 
         Returns:
 
         """
-        famous_guys: List[str] = self.parse_target_users(target_list)
-        self.SLACK_INFO.send_message(f'TwitterBot-chan will collect followers of「{famous_guys}」')
 
         famous_guys = ['717nkz']  # test user
-        self.SLACK_INFO.send_message('1/4: Fetched all_ids')
+        self.SLACK_INFO.send_message('1/4: Fetch all_ids')
         all_ids: Set[int] = {
             id_
             for famous_guy in famous_guys
@@ -224,14 +228,30 @@ if __name__ == '__main__':
     """
     This process should be implemented before executing main twitter bot
     """
-    target_list = 'target_lists/tier1.txt'
+    # id_ = '3690091'
+    # user = UserBot().fetch_user_info(id=id_)
+
+    target_file = 'target_lists/tier1.txt'
+    dumped_file = 'target_lists/dumped_users.txt'
+    dumped_list: List[str] = UserBot.parse_target_users(dumped_file)
+    famous_guys: List[str] = UserBot.parse_target_users(target_file)
+
     UserBot.create_table_unless_exists()
-    try:
-        UserBot().collect_all_users_and_save_them_in_db(target_list)
-    except Exception as e:
-        # Narrow Exception
-        import sys
-        tb = sys.exc_info()[2]
-        BotBase.SLACK_ERROR.send_message(e.with_traceback(tb))
-        raise e
-    UserBot.SLACK_INFO.send_message('The whole process ended! お疲れ様でした!')
+    UserBot.SLACK_INFO.send_message(f'TwitterBot-chan will collect followers of「{famous_guys}」')
+
+    for famous_guy in famous_guys:
+        if famous_guy in dumped_list:
+            UserBot.SLACK_WARNING.send_message(f'this guy {famous_guy} has already been used. Skip him.')
+            continue
+        try:
+            UserBot().collect_followers_of_famous_users_and_save_them_in_db([famous_guy])
+        except Exception as e:
+            # TODO: Narrow Exception by creating wrapper
+            import sys
+
+            tb = sys.exc_info()[2]
+            BotBase.SLACK_ERROR.send_message(e.with_traceback(tb))
+            raise e
+        UserBot.SLACK_INFO.send_message('The whole process ended! お疲れ様でした!')
+        with open(dumped_file, mode='a') as f:
+            f.write(f'{famous_guy}\n')
