@@ -63,3 +63,11 @@ if DEBUG:
 REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND = 60*15
 
 RETRY_NUM = 3
+
+# Total number of importance has to be less than limit - 500(like_tweet_from_users_in_db)
+TARGET_KEYWORD_AND_IMPORTANCE: List[Tuple[str, int]] = [
+        ('MatrixFLow', 10),
+        ('#駆け出しwebデザイナーと繋がりたい', 30),
+        ('#駆け出しエンジニアと繋がりたい', 50),
+        #     TODO: Add more and create property file
+    ]

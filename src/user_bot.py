@@ -196,8 +196,6 @@ class UserBot(BotBase):
         Returns:
 
         """
-
-        famous_guys = ['717nkz']  # test user
         self.SLACK_INFO.send_message('1/4: Fetch all_ids')
         all_ids: Set[int] = {
             id_
@@ -245,6 +243,11 @@ if __name__ == '__main__':
             continue
         try:
             UserBot().collect_followers_of_famous_users_and_save_them_in_db([famous_guy])
+        except TweepError as e:
+            BotBase.SLACK_ERROR.send_message(
+                'An error occurred from tweepy client.'
+                f'Reason for this error is「{e.reason}」'
+            )
         except Exception as e:
             # TODO: Narrow Exception by creating wrapper
             import sys
