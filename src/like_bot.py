@@ -16,6 +16,7 @@ from user_bot import UserBot
 @dataclass
 class LikeBot(BotBase):
     user_bot = UserBot()
+    total_likes: int = 0
 
     @prevent_from_limit_error(
         'search',
@@ -178,6 +179,7 @@ class LikeBot(BotBase):
             user_model.num_likes += 1
             session.commit()
             total_like_tweets += 1
+            self.total_likes += 1
         session.close()
         self.SLACK_INFO.send_message(f'{total_like_tweets} tweets have been liked.')
 
@@ -216,8 +218,9 @@ class LikeBot(BotBase):
                 users_to_save.append(tweet.author)
 
         self.SLACK_INFO.send_message(f"5/5: Save {len(users_to_save)} users")
-        # self.user_bot.save_users(users_to_save, num_likes=1)
+        self.user_bot.save_users(users_to_save, num_likes=1)
 
+        self.total_likes += len(users_to_save)
         self.SLACK_INFO.send_message(
             f'{len(users_to_save)}/{len(tweets)}tweets searched by keyword have been liked.'
         )
@@ -243,8 +246,9 @@ if __name__ == '__main__':
             BotBase.SLACK_ERROR.send_message(e.with_traceback(tb))
             raise e
 
+        TOTAL_LIKES_BY_KEYWORD = int(LIKE_LIMIT - like_bot.total_likes)
         for keyword, importance in TARGET_KEYWORD_AND_IMPORTANCE:
-            like_num = int((LIKE_LIMIT - DB_LIKES) * importance / len(TARGET_KEYWORD_AND_IMPORTANCE))
+            like_num = int(TOTAL_LIKES_BY_KEYWORD * importance / len(TARGET_KEYWORD_AND_IMPORTANCE))
             try:
                 like_bot.like_from_keyword(keyword, like_num)
             except TweepError as e:
