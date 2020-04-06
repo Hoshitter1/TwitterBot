@@ -7,7 +7,7 @@ import tweepy
 from tweepy import models
 from tweepy.error import RateLimitError, TweepError
 
-from base import BotBase
+from base import BotBase, prevent_from_limit_error
 from utils import *
 from models import users
 
@@ -16,6 +16,13 @@ from models import users
 class UserBot(BotBase):
     user_info_cache: Optional[models.User] = None
 
+    @prevent_from_limit_error(
+        'users',
+        '/users/show/:id',
+        request_limit=900,
+        window_in_sec=15 * 60,
+        recovery_time_in_sec=15 * 60
+    )
     def fetch_user_info(self, **kwargs) -> Optional[models.User]:
         """
 
@@ -32,11 +39,23 @@ class UserBot(BotBase):
                 return self.API.get_user(**kwargs)
             except RateLimitError:
                 time.sleep(REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND)
-                self.SLACK_WARNING.send_message('WARNING: Rate limit error occurred! Sleep for 15min..zzzz')
+                self.SLACK_WARNING.send_message(
+                    (
+                        'WARNING: Rate limit error occurred in fetch_user_info'
+                        'Sleep for 15min..zzzz'
+                    )
+                )
                 continue
             except Exception:
                 raise Exception('Something is wrong in fetch_user_info.')
 
+    @prevent_from_limit_error(
+        'statuses',
+        '/statuses/user_timeline',
+        request_limit=1500,
+        window_in_sec=15 * 60,
+        recovery_time_in_sec=15 * 60
+    )
     def fetch_user_tweet(self, **kwargs) -> models.User:
         """
 
@@ -58,21 +77,17 @@ class UserBot(BotBase):
             except Exception:
                 raise Exception('Something is wrong in fetch_user_info.')
 
+    @prevent_from_limit_error(
+        'followers',
+        '/followers/ids',
+        request_limit=15,
+        window_in_sec=15 * 60,
+        recovery_time_in_sec=15 * 60
+    )
     def fetch_user_follower_ids(self, user_id: str) -> Set[int]:
         followers_ids_iter = tweepy.Cursor(self.API.followers_ids, id=user_id).pages()
-        remaining = self.fetch_request_limit_remaining(
-            'followers',
-            '/followers/ids',
-            'remaining'
-        )
-        if remaining == 0:
-            time.sleep(REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND)
-            self.SLACK_WARNING.send_message(
-                'WARNING: Rate limit (fetch_user_follower_ids) error occurred! Sleep for 15min..zzzz'
-            )
-
         all_ids: Set[int] = set()
-        for _ in range(RETRY_NUM):
+        while True:
             try:
                 ids = next(followers_ids_iter)
             except RateLimitError:
@@ -81,14 +96,17 @@ class UserBot(BotBase):
                 continue
             except StopIteration:
                 break
+            except TweepError:
+                raise
 
             for id_ in ids:
                 all_ids.add(id_)
 
         return all_ids
 
-    def is_active(self, user: models.User) -> bool:
-        tweets = self.fetch_user_tweet(id=user.id)
+    def is_active(self, user: models.User, tweets=None) -> bool:
+        if tweets is None:
+            tweets = self.fetch_user_tweet(id=user.id)
 
         # Filters from here
         has_tweets = len(tweets) > 0
@@ -136,7 +154,7 @@ class UserBot(BotBase):
         session.close()
         return filtered_ids
 
-    def is_valuable_user(self, user_id: Union[int, models.User]) -> bool:
+    def is_valuable_user(self, user_id: Union[int, models.User], tweets=None) -> bool:
         if isinstance(user_id, int):
             self.user_info_cache = self.fetch_user_info(id=user_id)
         else:
@@ -149,7 +167,7 @@ class UserBot(BotBase):
         if not self.has_valuable_description(self.user_info_cache):
             return False
 
-        if not self.is_active(self.user_info_cache):
+        if not self.is_active(self.user_info_cache, tweets):
             return False
 
         if self.is_business_account(self.user_info_cache):
@@ -226,21 +244,18 @@ if __name__ == '__main__':
     """
     This process should be implemented before executing main twitter bot
     """
-    # id_ = '3690091'
-    # user = UserBot().fetch_user_info(id=id_)
-
     target_file = 'target_lists/tier1.txt'
+    famous_guys: List[str] = UserBot.parse_target_users(target_file)
     dumped_file = 'target_lists/dumped_users.txt'
     dumped_list: List[str] = UserBot.parse_target_users(dumped_file)
-    famous_guys: List[str] = UserBot.parse_target_users(target_file)
 
     UserBot.create_table_unless_exists()
-    UserBot.SLACK_INFO.send_message(f'TwitterBot-chan will collect followers of「{famous_guys}」')
 
     for famous_guy in famous_guys:
         if famous_guy in dumped_list:
             UserBot.SLACK_WARNING.send_message(f'this guy {famous_guy} has already been used. Skip him.')
             continue
+        UserBot.SLACK_INFO.send_message(f'TwitterBot-chan will collect followers of「{famous_guy}」')
         try:
             UserBot().collect_followers_of_famous_users_and_save_them_in_db([famous_guy])
         except TweepError as e:
@@ -255,6 +270,6 @@ if __name__ == '__main__':
             tb = sys.exc_info()[2]
             BotBase.SLACK_ERROR.send_message(e.with_traceback(tb))
             raise e
-        UserBot.SLACK_INFO.send_message('The whole process ended! お疲れ様でした!')
         with open(dumped_file, mode='a') as f:
             f.write(f'{famous_guy}\n')
+    UserBot.SLACK_INFO.send_message('****[IMPORTANT]The whole process of registering users ended!*****')

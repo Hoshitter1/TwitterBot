@@ -7,7 +7,7 @@ import tweepy
 from tweepy import models
 from tweepy.error import RateLimitError, TweepError
 
-from base import BotBase
+from base import BotBase, prevent_from_limit_error
 from utils import *
 from models.users import ValuableUsers
 from user_bot import UserBot
@@ -17,6 +17,13 @@ from user_bot import UserBot
 class LikeBot(BotBase):
     user_bot = UserBot()
 
+    @prevent_from_limit_error(
+        'search',
+        '/search/tweets',
+        request_limit=450,
+        window_in_sec=15 * 60,
+        recovery_time_in_sec=15 * 60
+    )
     def fetch_tweets_by_keyword(self, **kwargs):
         """
 
@@ -55,19 +62,26 @@ class LikeBot(BotBase):
             except TweepError:
                 raise
 
+    @prevent_from_limit_error(
+        request_limit=15,
+        window_in_sec=15 * 60,
+        recovery_time_in_sec=15 * 60
+    )
     def like_tweet(self, **kwargs):
+        """
+
+        Args:
+            **kwargs:
+
+        Returns:
+
+        Notes:
+            Requests / 24-hour window	1000 per user; 1000 per app
+            https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/post-favorites-create
+        """
         for _ in range(RETRY_NUM):
             try:
                 return self.API.create_favorite(**kwargs)
-            except RateLimitError:
-                time.sleep(REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND)
-                self.SLACK_WARNING.send_message(
-                    (
-                        'WARNING: Rate limit error occurred in like_tweet'
-                        'Sleep for 15min..zzzz'
-                    )
-                )
-                continue
             except TweepError as e:
                 if e.response.status_code == 403:
                     # TODO: Should either get all of my favourites or save them in db.
@@ -76,6 +90,14 @@ class LikeBot(BotBase):
                             'WARNING: This tweet has been liked.'
                         )
                     )
+                    return
+                elif e.response.status_code == 429:
+                    self.SLACK_ERROR.send_message(
+                        (
+                            "Like request limit has been exceeded. Let's sleep 24hours"
+                        )
+                    )
+                    time.sleep(24 * 60 * 60)
                     return
                 raise
 
@@ -116,7 +138,7 @@ class LikeBot(BotBase):
                 session.close()
                 return users_in_db[:data_num]
 
-        self.SLACK_WARNING(
+        self.SLACK_WARNING.send_message(
             'There is not enough number of users to like. Update user database immediately.'
         )
         session.close()
@@ -124,6 +146,7 @@ class LikeBot(BotBase):
 
     @staticmethod
     def is_likable(tweet):
+        # TODO: Issue(Favorited state in search is always false):https://github.com/tweepy/tweepy/issues/1233
         if tweet.favorited or tweet.retweeted:
             return False
         if tweet.favorite_count > 10 or tweet.retweet_count > 10:
@@ -159,18 +182,18 @@ class LikeBot(BotBase):
         self.SLACK_INFO.send_message(f'{total_like_tweets} tweets have been liked.')
 
     def like_from_keyword(self, search_word: str, num_to_like: int):
-        self.SLACK_INFO.send_message(f'1/4: Fetch tweets by search_word「{search_word}」')
+        self.SLACK_INFO.send_message(f'1/5: Fetch tweets by search_word「{search_word}」num_to_like: {num_to_like}')
         tweets = self.fetch_tweets_by_keyword(q=search_word, count=100)
 
-        self.SLACK_INFO.send_message(f"2/4: filter {len(tweets)}tweets based on user's value")
+        self.SLACK_INFO.send_message(f"2/5: filter {len(tweets)}tweets based on user's value")
         filtered_tweets_by_user_info = [
             tweet
             for tweet in tweets
-            if self.user_bot.is_valuable_user(tweet.author)
+            if self.user_bot.is_valuable_user(tweet.author, [tweet])
         ]
 
         self.SLACK_INFO.send_message(
-            f"2/4: filter {len(filtered_tweets_by_user_info)}tweets based on tweet's likability"
+            f"3/5: filter {len(filtered_tweets_by_user_info)}tweets based on tweet's likability"
         )
         filtered_tweets_by_likability = [
             tweet
@@ -185,15 +208,15 @@ class LikeBot(BotBase):
                 f'I only found {len(target_tweets_to_like)}...Sorry bro.'
             )
 
-        self.SLACK_INFO.send_message(f"3/4: Like them all {len(target_tweets_to_like)}")
+        self.SLACK_INFO.send_message(f"4/5: Like them all {len(target_tweets_to_like)}")
         users_to_save = []
         for tweet in target_tweets_to_like:
             status = self.like_tweet(id=tweet.id)
             if status is not None:
                 users_to_save.append(tweet.author)
 
-        self.SLACK_INFO.send_message(f"4/4: Save {len(users_to_save)} users")
-        self.user_bot.save_users(users_to_save, num_likes=1)
+        self.SLACK_INFO.send_message(f"5/5: Save {len(users_to_save)} users")
+        # self.user_bot.save_users(users_to_save, num_likes=1)
 
         self.SLACK_INFO.send_message(
             f'{len(users_to_save)}/{len(tweets)}tweets searched by keyword have been liked.'
@@ -202,27 +225,14 @@ class LikeBot(BotBase):
 
 if __name__ == '__main__':
     like_bot = LikeBot()
-    try:
-        like_bot.like_tweet_from_users_in_db(data_num=500)
-    except TweepError as e:
-        BotBase.SLACK_ERROR.send_message(
-            'An error occurred from tweepy client.'
-            f'Reason for this error is「{e.reason}」'
-        )
-    except Exception as e:
-        # TODO: Narrow Exception by creating wrapper
-        import sys
-
-        tb = sys.exc_info()[2]
-        BotBase.SLACK_ERROR.send_message(e.with_traceback(tb))
-        raise e
-
-    for keyword, importance in TARGET_KEYWORD_AND_IMPORTANCE:
+    DB_LIKES = 500
+    LIKE_LIMIT = 1000
+    while True:
         try:
-            like_bot.like_from_keyword(keyword, importance)
+            like_bot.like_tweet_from_users_in_db(data_num=DB_LIKES)
         except TweepError as e:
             BotBase.SLACK_ERROR.send_message(
-                'An error occurred from tweepy client.'
+                'An error occurred from tweepy client of like_tweet_from_users_in_db.'
                 f'Reason for this error is「{e.reason}」'
             )
         except Exception as e:
@@ -232,3 +242,20 @@ if __name__ == '__main__':
             tb = sys.exc_info()[2]
             BotBase.SLACK_ERROR.send_message(e.with_traceback(tb))
             raise e
+
+        for keyword, importance in TARGET_KEYWORD_AND_IMPORTANCE:
+            like_num = int((LIKE_LIMIT - DB_LIKES) * importance / len(TARGET_KEYWORD_AND_IMPORTANCE))
+            try:
+                like_bot.like_from_keyword(keyword, like_num)
+            except TweepError as e:
+                BotBase.SLACK_ERROR.send_message(
+                    'An error occurred from tweepy client of like_from_keyword.'
+                    f'Reason for this error is「{e.reason}」'
+                )
+            except Exception as e:
+                # TODO: Narrow Exception by creating wrapper
+                import sys
+
+                tb = sys.exc_info()[2]
+                BotBase.SLACK_ERROR.send_message(e.with_traceback(tb))
+                raise e
