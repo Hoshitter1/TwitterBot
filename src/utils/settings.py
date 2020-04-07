@@ -5,17 +5,16 @@ from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
+
 DEBUG = True
 
+
 # DB settings
-# {database_name}://{user}:{password}@{host}/{dbname}
 DB = 'postgresql'
 USER = 'user_dev'
 PASSWORD = 'pass_dev'
 HOST = 'db:5432'
 DBNAME = 'develop_db'
-
-# TODO: Add logging
 if not DEBUG:
     DB = os.environ['DB'],
     USER = os.environ['USER'],
@@ -28,8 +27,6 @@ ENGINE = create_engine(
     encoding="utf-8",
     echo=True
 )
-
-# TODO: This way of implementation does not look good
 session = scoped_session(
     sessionmaker(
         autocommit=False,
@@ -37,9 +34,9 @@ session = scoped_session(
         bind=ENGINE
     )
 )
-
 Base = declarative_base()
 Base.query = session.query_property()
+
 
 # Twitter secrets
 CONSUMER_KEY = os.environ['CONSUMER_KEY']
@@ -51,17 +48,14 @@ ACCESS_TOKEN_SECRET = os.environ['ACCESS_TOKEN_SECRET']
 SLACK_TOKEN = os.environ['SLACK_TOKEN']
 
 if DEBUG:
-    pass
-    # print(
-    #     f'CONSUMER_KEY:{CONSUMER_KEY}'
-    #     f'CONSUMER_SECRET:{CONSUMER_SECRET}'
-    #     f'ACCESS_TOKEN:{ACCESS_TOKEN}'
-    #     f'ACCESS_TOKEN_SECRET:{ACCESS_TOKEN_SECRET}'
-    # )
+    print(
+        f'CONSUMER_KEY:{CONSUMER_KEY}'
+        f'CONSUMER_SECRET:{CONSUMER_SECRET}'
+        f'ACCESS_TOKEN:{ACCESS_TOKEN}'
+        f'ACCESS_TOKEN_SECRET:{ACCESS_TOKEN_SECRET}'
+        f'SLACK_TOKEN: {SLACK_TOKEN}'
+    )
 
-REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND = 60 * 15
-
-RETRY_NUM = 3
 
 # Total number of importance has to be less than limit(1000) - 500(like_tweet_from_users_in_db) = 500
 # Express importance by 5 levels
@@ -88,6 +82,14 @@ TARGET_KEYWORD_AND_IMPORTANCE: List[Tuple[str, int]] = [
     ('MatrixFLow', 1),
 ]
 
+
+# Client
+REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND = 60 * 15
+RETRY_NUM = 3
+LIKE_LIMIT_PER_DAY = 1000
+
+
+# Settings for logics
 DUMPED_FILE = 'target_lists/dumped_users.txt'
 DB_LIKES = 500
-LIKE_LIMIT_PER_DAY = 1000
+NUM_PER_BATCH = 100

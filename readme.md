@@ -22,8 +22,8 @@ ref: https://developer.twitter.com/ja/docs/basics/authentication/guides/access-t
 5. slack_token.txt
 
 
-## 2. Add a directory named target lists under src containing text files.
-text files should contain twitter IDs so user_bot will save their followers based on their values.
+## 2. Add a directory named target lists under src and include text files.
+Include twitter IDs of your target celebrities in target_lists so user_bot will save their followers based on their values.
 
 
 ## 2. Do this
