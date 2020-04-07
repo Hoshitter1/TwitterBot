@@ -5,12 +5,14 @@ from logics import (
     LikeLogic,
 )
 from clients import SLACK_INFO
+from models.users import create_table_unless_exists
 
 
 def main():
+    create_table_unless_exists()
     loop = asyncio.get_event_loop()
     gather = asyncio.gather(
-        # UserLogic.main(target_file='target_lists/tier3.txt'),
+        UserLogic.main(target_dir='./target_lists'),
         LikeLogic.main(),
     )
     loop.run_until_complete(gather)

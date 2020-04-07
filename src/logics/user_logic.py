@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from typing import Set, List
 
@@ -85,13 +86,19 @@ class UserLogic(LogicBase):
         """
 
         """
-        target_file = kwargs.get('target_file', None)
-        if target_file is None:
+        target_dir = kwargs.get('target_dir', None)
+        if target_dir is None:
             raise LogicErrorFileNotFound('target_file has to be specified in main of UserLogic')
-        famous_guys: List[str] = parse_target_users(target_file)
+        files: List[str] = os.listdir(target_dir)
+        print(f'files{files}')
+        famous_guys = [
+            user
+            for file in files
+            for user in parse_target_users(os.path.join(target_dir, file))
+        ]
+        print(f'famous_guys{famous_guys}')
         dumped_list: List[str] = parse_target_users(DUMPED_FILE)
 
-        models.ValuableUsers.create_table_unless_exists()
         cls_instance = cls()
 
         for famous_guy in famous_guys:

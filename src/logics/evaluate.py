@@ -17,10 +17,14 @@ class Evaluate:
         if isinstance(user_info, int):
             user_info = self.twitter.fetch_user_info(id=user_info)
         self.user_info_cache = user_info
+        if self.user_info_cache is None:
+            return False
 
         if tweets is None:
             tweets = self.twitter.fetch_user_tweet(id=self.user_info_cache.id)
         self.tweet_info_cache = tweets
+        if tweets is None:
+            return False
 
         if not self.is_reliable(self.user_info_cache):
             return False
