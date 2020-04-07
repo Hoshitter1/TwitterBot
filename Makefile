@@ -21,3 +21,7 @@ build:
 	                     --build-arg SLACK_TOKEN=$(SLACK_TOKEN)
 debug:
 	docker-compose run src bash
+
+exec:
+	docker-compose run -d src python main_bot.py
+
