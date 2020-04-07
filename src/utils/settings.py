@@ -86,10 +86,10 @@ TARGET_KEYWORD_AND_IMPORTANCE: List[Tuple[str, int]] = [
 # Client
 REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND = 60 * 15
 RETRY_NUM = 3
-LIKE_LIMIT_PER_DAY = 1000
+LIKE_LIMIT_PER_DAY = 150
 
 
 # Settings for logics
 DUMPED_FILE = 'target_lists/dumped_users.txt'
-DB_LIKES = 500
+DB_LIKES = 50
 NUM_PER_BATCH = 100

@@ -1,3 +1,4 @@
+import asyncio
 import os
 from dataclasses import dataclass
 from typing import Set, List
@@ -39,7 +40,7 @@ class UserLogic(LogicBase):
         session.close()
         return filtered_ids
 
-    def collect_followers_of_famous_users_and_save_them_in_db(self, famous_guys: List[str]) -> None:
+    def collect_followers_of_famous_users_and_save_them_in_db(self, famous_guys: List[str]) -> List[List[int]]:
         """collect_followers_of_famous_users_and_save_them_in_db
 
         """
@@ -66,20 +67,21 @@ class UserLogic(LogicBase):
         SLACK_INFO.send_message(
             f'[save_user]total batch number is {len(user_batches)}'
         )
-        for i, users in enumerate(user_batches):
-            SLACK_INFO.send_message(
-                f'[save_user]4/5: subprocess: {i}/{len(user_batches)} filter based on their values. '
-            )
-            users_filtered_by_value: List[user_account] = [
-                self.evaluate.user_info_cache for id_ in users
-                if self.evaluate.is_valuable_user(id_)
-            ]
+        return user_batches
 
-            SLACK_INFO.send_message(
-                f'[save_user]5/5: subprocess: {i}/{len(user_batches)} '
-                f'Save all of them. users_filtered_by_value{len(users_filtered_by_value)}'
-            )
-            self.save_new_users(users_filtered_by_value)
+    def save_batches(self, user_batch):
+        SLACK_INFO.send_message(
+            f'[save_user]4/5: filter based on their values. '
+        )
+        users_filtered_by_value: List[user_account] = [
+            self.evaluate.user_info_cache for id_ in user_batch
+            if self.evaluate.is_valuable_user(id_)
+        ]
+
+        SLACK_INFO.send_message(
+            f'[save_user]Save all of them. users_filtered_by_value{len(users_filtered_by_value)}'
+        )
+        self.save_new_users(users_filtered_by_value)
 
     @classmethod
     async def main(cls, *args, **kwargs) -> None:
@@ -107,7 +109,7 @@ class UserLogic(LogicBase):
                 continue
             SLACK_INFO.send_message(f'TwitterBot-chan will collect followers of「{famous_guy}」')
             try:
-                cls_instance.collect_followers_of_famous_users_and_save_them_in_db([famous_guy])
+                user_batches = cls_instance.collect_followers_of_famous_users_and_save_them_in_db([famous_guy])
             except TweepError as e:
                 SLACK_ERROR.send_message(
                     'An error occurred from tweepy client in UserLogic.'
@@ -128,6 +130,9 @@ class UserLogic(LogicBase):
                 tb = sys.exc_info()[2]
                 SLACK_ERROR.send_message(e.with_traceback(tb))
                 raise e
+            for user_batch in user_batches:
+                cls_instance.save_batches(user_batch)
+                await asyncio.sleep(1)
             with open(DUMPED_FILE, mode='a') as f:
                 f.write(f'{famous_guy}\n')
         SLACK_INFO.send_message('****[IMPORTANT]The whole process of registering users ended!*****')
