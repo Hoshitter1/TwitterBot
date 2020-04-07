@@ -1,26 +1,31 @@
 import requests
 
-from utils import SLACK_TOKEN
+from .mixins import SlackCredentialMixin
 
 
-class Slack:
+class SlackBase:
+    pass
 
-    def __init__(self, channel):
-        self.__token = SLACK_TOKEN
-        self.__headers = {'Content-Type': 'application/json'}
-        self.__channel = channel
+
+class SlackClient(SlackBase, SlackCredentialMixin):
 
     def send_message(self, message):
         params = {
-            'token': self.__token,
-            'channel': self.__channel,
+            'token': self._token,
+            'channel': self._channel,
             'text': message
         }
 
         res = requests.post(
             'https://slack.com/api/chat.postMessage',
-            headers=self.__headers,
+            headers=self._headers,
             params=params
         )
         if not res.json().get('ok'):
+            # TODO
             print('add logging here')
+
+
+SLACK_INFO = SlackClient('#twitter_bot_info')
+SLACK_WARNING = SlackClient('#twitter_bot_warning')
+SLACK_ERROR = SlackClient('#twitter_bot_error')
