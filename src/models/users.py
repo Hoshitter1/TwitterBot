@@ -14,6 +14,6 @@ class ValuableUsers(Base):
     is_friend = Column('is_friend', Boolean, default=False)
     num_likes = Column('num_likes', Integer, default=0)
 
-    @staticmethod
-    def create_table_unless_exists() -> None:
-        Base.metadata.create_all(bind=ENGINE)
+
+def create_table_unless_exists() -> None:
+    Base.metadata.create_all(bind=ENGINE)

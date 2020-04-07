@@ -139,6 +139,10 @@ class TwitterClient(
                 )
                 continue
             except TweepError as e:
+                if e.response.status_code == 401:
+                    """Not Authorized(protected account)"""
+                    SLACK_WARNING.send_message(f'WARNING: This user is protected{str(kwargs)}')
+                    return None
                 raise e
 
     @prevent_from_limit_error(
@@ -190,8 +194,11 @@ class TwitterClient(
                 continue
             except StopIteration:
                 break
-            except TweepError:
-                raise
+            except TweepError as e:
+                if e.response.status_code == 401:
+                    """ID that does not exist"""
+                    SLACK_ERROR.send_message(f'ID:{user_id} does not exist')
+                raise e
 
             for id_ in ids:
                 all_ids.add(id_)
