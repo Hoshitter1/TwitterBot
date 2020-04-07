@@ -7,8 +7,16 @@ from sqlalchemy.orm import sessionmaker
 import tweepy
 from tweepy.error import RateLimitError
 
-from utils import *
-from slack_client import Slack
+from utils import (
+    CONSUMER_KEY,
+    CONSUMER_SECRET,
+    ACCESS_TOKEN,
+    ACCESS_TOKEN_SECRET,
+    ENGINE,
+    RETRY_NUM,
+    REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND,
+)
+from clients.slack_client import Slack
 
 
 class BotBase:
@@ -23,39 +31,6 @@ class BotBase:
     def get_session(self):
         session = sessionmaker(bind=ENGINE)
         return session()
-
-    @classmethod
-    def fetch_request_limit_remaining(cls, *args, **kwargs) -> Any:
-        """15 calls every 15 minutes
-
-        Returns:
-
-        Notes:
-            API Document xxx
-
-        """
-        # TODO: Create cache
-        for _ in range(RETRY_NUM):
-            try:
-                status = cls.API.rate_limit_status()
-            except RateLimitError:
-                cls.SLACK_WARNING.send_message(
-                    (
-                        'WARNING: Woops Rate limit (fetch_request_limit_remaining in Base) '
-                        'error occurred! Sleep for 15min..zzzz'
-                    )
-                )
-                time.sleep(REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND)
-                continue
-            break
-        outer = status.get('resources', {})
-        inner: Any
-        for target in args:
-            inner = outer.get(target, None)
-            if inner is None:
-                break
-            outer = inner
-        return inner
 
 
 def prevent_from_limit_error(
@@ -91,6 +66,7 @@ def prevent_from_limit_error(
             cache['num_called'] += 1
             print(f'{func.__name__}_cache_inside: {cache}')
             return func(*args, **kwargs)
+
         cache = {
             'num_called': 0,
             'previous_call': time.time(),

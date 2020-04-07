@@ -1,16 +1,17 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Set, List, Optional, Tuple, Union
+from typing import List
 import time
 
-import tweepy
 from tweepy import models
 from tweepy.error import RateLimitError, TweepError
 
-from base import BotBase, prevent_from_limit_error
-from utils import *
+from utils import (
+    RETRY_NUM,
+    REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND,
+)
 from models.users import ValuableUsers
-from user_bot import UserBot
+from .user_bot import UserBot
+from .base import BotBase, prevent_from_limit_error
 
 
 @dataclass
