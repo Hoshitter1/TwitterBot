@@ -7,9 +7,12 @@ import tweepy
 from tweepy import models
 from tweepy.error import RateLimitError, TweepError
 
-from base import BotBase, prevent_from_limit_error
-from utils import *
+from utils import (
+    RETRY_NUM,
+    REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND,
+)
 from models import users
+from .base import BotBase, prevent_from_limit_error
 
 
 @dataclass
@@ -176,10 +179,6 @@ class UserBot(BotBase):
         return True
 
     @staticmethod
-    def create_table_unless_exists() -> None:
-        Base.metadata.create_all(bind=ENGINE)
-
-    @staticmethod
     def parse_target_users(text_file: str) -> List[str]:
         f = open(text_file)
         return f.read().splitlines()
@@ -214,7 +213,7 @@ class UserBot(BotBase):
         Returns:
 
         """
-        self.SLACK_INFO.send_message('1/4: Fetch all_ids')
+        self.SLACK_INFO.send_message('[save_user]1/4: Fetch all_ids')
         all_ids: Set[int] = {
             id_
             for famous_guy in famous_guys
@@ -222,12 +221,12 @@ class UserBot(BotBase):
         }
 
         self.SLACK_INFO.send_message(
-            f'2/4: filter to avoid saving duplicate id. all_ids:{len(all_ids)}'
+            f'[save_user]2/4: filter to avoid saving duplicate id. all_ids:{len(all_ids)}'
         )
         users_filtered_if_existed: List[int] = self.filter_by_existence_in_database(all_ids)
 
         self.SLACK_INFO.send_message(
-            f'3/4: filter based on their values. users_filtered_if_existed:{len(users_filtered_if_existed)}'
+            f'[save_user]3/4: filter based on their values. users_filtered_if_existed:{len(users_filtered_if_existed)}'
         )
         users_filtered_by_value: List[models.User] = [
             self.user_info_cache for id_ in users_filtered_if_existed
@@ -235,7 +234,7 @@ class UserBot(BotBase):
         ]
 
         self.SLACK_INFO.send_message(
-            f'4/4: Save all of them. users_filtered_by_value{len(users_filtered_by_value)}'
+            f'[save_user]4/4: Save all of them. users_filtered_by_value{len(users_filtered_by_value)}'
         )
         self.save_users(users_filtered_by_value)
 
@@ -244,9 +243,9 @@ if __name__ == '__main__':
     """
     This process should be implemented before executing main twitter bot
     """
-    target_file = 'target_lists/tier1.txt'
+    target_file = '../target_lists/tier1.txt'
     famous_guys: List[str] = UserBot.parse_target_users(target_file)
-    dumped_file = 'target_lists/dumped_users.txt'
+    dumped_file = '../target_lists/dumped_users.txt'
     dumped_list: List[str] = UserBot.parse_target_users(dumped_file)
 
     UserBot.create_table_unless_exists()

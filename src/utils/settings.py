@@ -87,3 +87,7 @@ TARGET_KEYWORD_AND_IMPORTANCE: List[Tuple[str, int]] = [
     ('C++', 1),
     ('MatrixFLow', 1),
 ]
+
+DUMPED_FILE = 'target_lists/dumped_users.txt'
+DB_LIKES = 500
+LIKE_LIMIT_PER_DAY = 1000
