@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 from typing import List
 import random
@@ -86,10 +87,16 @@ class LikeLogic(LogicBase):
             data_num: Number of users to extract for liking
 
         """
+        SLACK_INFO.send_message(
+            '1/3: like_tweet_from_users_in_db'
+        )
         users: List[ValuableUsers] = self.fetch_users_with_likes_less_than_threshold_from_db(
             data_num=data_num
         )
         total_like_tweets: int = 0
+        SLACK_INFO.send_message(
+            '2/3: like_tweet_from_users_in_db'
+        )
         for user in users:
             tweets = self.twitter.fetch_user_tweet(id=user.user_id)
             likable_tweet = self.evaluate.find_likable_tweet(tweets)
@@ -167,7 +174,7 @@ class LikeLogic(LogicBase):
             except LogicError as e:
                 SLACK_ERROR.send_message(
                     'An error occurred from tweepy client of like_tweet_from_users_in_db.'
-                    f'Reason for this error is「{e.reason}」'
+                    f'Reason for this error is「{e}」'
                 )
                 raise e
             except Exception as e:
@@ -176,10 +183,10 @@ class LikeLogic(LogicBase):
                 tb = sys.exc_info()[2]
                 SLACK_ERROR.send_message(e.with_traceback(tb))
                 raise e
-
             total_likes_by_keyword = int(LIKE_LIMIT_PER_DAY - cls_instance.total_likes)
             random_keywords_and_importance = random.shuffle(TARGET_KEYWORD_AND_IMPORTANCE)
             for keyword, importance in random_keywords_and_importance:
+                await asyncio.sleep(1)
                 like_num = int(total_likes_by_keyword * importance / len(TARGET_KEYWORD_AND_IMPORTANCE))
                 try:
                     cls_instance.like_from_keyword(keyword, like_num)
