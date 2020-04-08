@@ -120,11 +120,23 @@ class LikeLogic(LogicBase):
         SLACK_INFO.send_message(f'1/5: Fetch tweets by search_word「{search_word}」num_to_like: {num_to_like}')
         tweets = self.twitter.fetch_tweets_by_keyword(q=search_word, count=100)
 
+        all_user_ids: List[int] = [
+            tweet.author.id
+            for tweet in tweets
+        ]
+        # TODO: FIx this later
+        duplicate_user_ids = [
+            user_id
+            for user_id in set(all_user_ids)
+            if all_user_ids.count(user_id) > 1
+        ]
+
         SLACK_INFO.send_message(f"2/5: filter {len(tweets)}tweets based on user's value")
         filtered_tweets_by_user_info = [
             tweet
             for tweet in tweets
             if self.evaluate.is_valuable_user(tweet.author, [tweet])
+            if tweet.author.id not in duplicate_user_ids
         ]
 
         SLACK_INFO.send_message(

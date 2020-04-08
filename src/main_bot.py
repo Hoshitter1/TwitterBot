@@ -11,7 +11,7 @@ def main():
     create_table_unless_exists()
     loop = asyncio.get_event_loop()
     gather = asyncio.gather(
-        # LikeLogic.main(),
+        LikeLogic.main(),
         UserLogic.main(target_dir='./target_lists'),
     )
     loop.run_until_complete(gather)
