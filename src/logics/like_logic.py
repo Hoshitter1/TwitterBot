@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple
 import random
 
 from tweepy.models import User as user_account
@@ -20,6 +20,7 @@ from utils.settings import (
 )
 from .base import LogicBase
 from .errors import LogicError
+
 
 @dataclass
 class LikeLogic(LogicBase):
@@ -88,14 +89,14 @@ class LikeLogic(LogicBase):
 
         """
         SLACK_INFO.send_message(
-            '1/3: like_tweet_from_users_in_db'
+            f'1/3: fetch users from db in like_tweet_from_users_in_db. data_num: {data_num}'
         )
         users: List[ValuableUsers] = self.fetch_users_with_likes_less_than_threshold_from_db(
             data_num=data_num
         )
         total_like_tweets: int = 0
         SLACK_INFO.send_message(
-            '2/3: like_tweet_from_users_in_db'
+            f'2/3: number of fetched users from db in like_tweet_from_users_in_db: {len(users)}'
         )
         for user in users:
             tweets = self.twitter.fetch_user_tweet(id=user.user_id)
@@ -184,7 +185,10 @@ class LikeLogic(LogicBase):
                 SLACK_ERROR.send_message(e.with_traceback(tb))
                 raise e
             total_likes_by_keyword = int(LIKE_LIMIT_PER_DAY - cls_instance.total_likes)
-            random_keywords_and_importance = random.shuffle(TARGET_KEYWORD_AND_IMPORTANCE)
+            random_keywords_and_importance: List[Tuple[str, int]] = random.sample(
+                TARGET_KEYWORD_AND_IMPORTANCE,
+                len(TARGET_KEYWORD_AND_IMPORTANCE)
+            )
             for keyword, importance in random_keywords_and_importance:
                 await asyncio.sleep(1)
                 like_num = int(total_likes_by_keyword * importance / len(TARGET_KEYWORD_AND_IMPORTANCE))

@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Union, List, Tuple
+from typing import List, Tuple
 
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -15,17 +15,19 @@ USER = 'user_dev'
 PASSWORD = 'pass_dev'
 HOST = 'db:5432'
 DBNAME = 'develop_db'
+ECHO = True
 if not DEBUG:
     DB = os.environ['DB'],
     USER = os.environ['USER'],
     HOST = os.environ['HOST'],
     PASSWORD = os.environ['PASSWORD'],
     DBNAME = os.environ['DBNAME'],
+    ECHO = False
 
 ENGINE = create_engine(
     f'{DB}://{USER}:{PASSWORD}@{HOST}/{DBNAME}',
     encoding="utf-8",
-    echo=True
+    echo=ECHO
 )
 session = scoped_session(
     sessionmaker(
