@@ -106,6 +106,7 @@ class LikeLogic(LogicBase):
             self.twitter.like_tweet(id=likable_tweet.id)
             self.increment_num_like_of_user_in_db(id_=user.user_id)
             self.total_likes += 1
+            total_like_tweets += 1
         SLACK_INFO.send_message(f'{total_like_tweets} tweets have been liked.')
 
     def like_from_keyword(self, search_word: str, num_to_like: int):
