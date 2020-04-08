@@ -57,7 +57,8 @@ class LogicBase:
             table: user_id(integer) screen_name(str) is_friend(boolean) num_likes(int)
         """
         session = self.get_session
-        new_accounts = self.filter_by_existence_in_database(target_all)
+        no_duplicate_id = set(target_all)
+        new_accounts: List[user_account] = self.filter_by_existence_in_database(no_duplicate_id)
         for new_account in new_accounts:
             screen_name: str = new_account.name
             id_: int = new_account.id

@@ -6,7 +6,6 @@ from typing import Set, List
 from tweepy.models import User as user_account
 from tweepy.error import TweepError
 
-import models
 from clients import (
     SLACK_INFO,
     SLACK_WARNING,
@@ -21,7 +20,7 @@ from .errors import LogicErrorFileNotFound, LogicError
 @dataclass
 class UserLogic(LogicBase):
 
-    def collect_followers_of_famous_users_and_save_them_in_db(self, famous_guys: List[str]) -> List[List[int]]:
+    def collect_followers_of_famous_users(self, famous_guys: List[str]) -> List[List[int]]:
         """collect_followers_of_famous_users_and_save_them_in_db
 
         """
@@ -90,7 +89,7 @@ class UserLogic(LogicBase):
                 continue
             SLACK_INFO.send_message(f'TwitterBot-chan will collect followers of「{famous_guy}」')
             try:
-                user_batches = cls_instance.collect_followers_of_famous_users_and_save_them_in_db([famous_guy])
+                user_batches = cls_instance.collect_followers_of_famous_users([famous_guy])
             except TweepError as e:
                 SLACK_ERROR.send_message(
                     'An error occurred from tweepy client in UserLogic.'
