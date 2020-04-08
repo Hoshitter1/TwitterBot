@@ -21,25 +21,6 @@ from .errors import LogicErrorFileNotFound, LogicError
 @dataclass
 class UserLogic(LogicBase):
 
-    def filter_by_existence_in_database(self, user_ids: Set[int]) -> List[int]:
-        """filter lists by checking if they are in db
-
-        Args:
-            user_ids:
-
-        Returns:
-
-        """
-        session = self.get_session
-        filtered_ids: List[int] = []
-        for id_ in user_ids:
-            user_in_db = session.query(models.ValuableUsers).filter(models.ValuableUsers.user_id == id_).first()
-            if user_in_db is not None:
-                continue
-            filtered_ids.append(id_)
-        session.close()
-        return filtered_ids
-
     def collect_followers_of_famous_users_and_save_them_in_db(self, famous_guys: List[str]) -> List[List[int]]:
         """collect_followers_of_famous_users_and_save_them_in_db
 
