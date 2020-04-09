@@ -195,6 +195,9 @@ class LikeLogic(LogicBase):
                 # TODO: Narrow Exception by creating wrapper
                 import sys
                 tb = sys.exc_info()[2]
+                SLACK_ERROR.send_message(
+                    'An error occurred from tweepy client of like_tweet_from_users_in_db.'
+                )
                 SLACK_ERROR.send_message(e.with_traceback(tb))
                 raise e
             total_likes_by_keyword = int(LIKE_LIMIT_PER_DAY - cls_instance.total_likes)
@@ -215,14 +218,16 @@ class LikeLogic(LogicBase):
                     raise e
                 except LogicError as e:
                     SLACK_ERROR.send_message(
-                        'A LogicError occurred from like_tweet_from_users_in_db.'
+                        'A LogicError occurred from like_from_keyword.'
                         f'Reason for this error is「{e}」'
                     )
                     raise e
                 except Exception as e:
                     # TODO: Narrow Exception by creating wrapper
                     import sys
-
                     tb = sys.exc_info()[2]
+                    SLACK_ERROR.send_message(
+                        'An error occurred from tweepy client of like_from_keyword.'
+                    )
                     SLACK_ERROR.send_message(e.with_traceback(tb))
                     raise e

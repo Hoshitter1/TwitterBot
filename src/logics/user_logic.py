@@ -108,6 +108,9 @@ class UserLogic(LogicBase):
                 # TODO: Update this
                 import sys
                 tb = sys.exc_info()[2]
+                SLACK_ERROR.send_message(
+                    'An error occurred in UserLogic.'
+                )
                 SLACK_ERROR.send_message(e.with_traceback(tb))
                 raise e
             for user_batch in user_batches:
