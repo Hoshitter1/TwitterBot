@@ -67,7 +67,15 @@ class TwitterClient(
                     )
                 )
                 continue
-            except TweepError:
+            except TweepError as e:
+                if e.response is None:
+                    SLACK_WARNING.send_message(
+                        f'WARNING: None response received in fetch_tweets_by_keyword.'
+                    )
+                    SLACK_WARNING.send_message(
+                        f'Reason is {e.reason}'
+                    )
+                    return []
                 raise
 
     @prevent_from_limit_error(
@@ -91,6 +99,14 @@ class TwitterClient(
             try:
                 return self.api.create_favorite(**kwargs)
             except TweepError as e:
+                if e.response is None:
+                    SLACK_WARNING.send_message(
+                        f'WARNING: None response received in like_tweet.'
+                    )
+                    SLACK_WARNING.send_message(
+                        f'Reason is {e.reason}'
+                    )
+                    return None
                 if e.response.status_code == 403:
                     # TODO: Should either get all of my favourites or save them in db.
                     SLACK_WARNING.send_message(
@@ -139,6 +155,14 @@ class TwitterClient(
                 )
                 continue
             except TweepError as e:
+                if e.response is None:
+                    SLACK_WARNING.send_message(
+                        f'WARNING: None response received in fetch_user_info.'
+                    )
+                    SLACK_WARNING.send_message(
+                        f'Reason is {e.reason}'
+                    )
+                    return None
                 if e.response.status_code == 401:
                     """Not Authorized(protected account)"""
                     SLACK_WARNING.send_message(f'WARNING: This user is protected{str(kwargs)}')
@@ -170,6 +194,14 @@ class TwitterClient(
                 SLACK_WARNING.send_message('WARNING: Rate limit error occurred! Sleep for 15min..zzzz')
                 continue
             except TweepError as e:
+                if e.response is None:
+                    SLACK_WARNING.send_message(
+                        f'WARNING: None response received in fetch_user_tweet.'
+                    )
+                    SLACK_WARNING.send_message(
+                        f'Reason is {e.reason}'
+                    )
+                    return None
                 if e.response.status_code == 401:
                     """Not Authorized(protected account)"""
                     SLACK_WARNING.send_message(f'WARNING: This user is protected{str(kwargs)}')
@@ -195,6 +227,14 @@ class TwitterClient(
             except StopIteration:
                 break
             except TweepError as e:
+                if e.response is None:
+                    SLACK_WARNING.send_message(
+                        f'WARNING: None response received in fetch_user_follower_ids.'
+                    )
+                    SLACK_WARNING.send_message(
+                        f'Reason is {e.reason}'
+                    )
+                    return all_ids
                 if e.response.status_code == 401:
                     """ID that does not exist"""
                     SLACK_ERROR.send_message(f'ID:{user_id} does not exist')
