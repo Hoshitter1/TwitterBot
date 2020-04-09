@@ -196,7 +196,7 @@ class LikeLogic(LogicBase):
                 import sys
                 tb = sys.exc_info()[2]
                 SLACK_ERROR.send_message(
-                    'An error occurred from tweepy client of like_tweet_from_users_in_db.'
+                    'An error occurred  like_tweet_from_users_in_db.'
                 )
                 SLACK_ERROR.send_message(e.with_traceback(tb))
                 raise e

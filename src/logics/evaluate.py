@@ -90,7 +90,7 @@ class Evaluate:
     def find_likable_tweet(self, tweets):
         if tweets is None:
             return None
-        for i in range(5):
+        for i in range(len(tweets)):
             target_tweet = tweets[i]
             if self.is_likable(target_tweet):
                 return target_tweet
