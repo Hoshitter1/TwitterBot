@@ -115,6 +115,13 @@ class TwitterClient(
                         )
                     )
                     return
+                elif e.response.status_code == 404:
+                    SLACK_WARNING.send_message(
+                        (
+                            'WARNING: This tweet has been deleted'
+                        )
+                    )
+                    return
                 elif e.response.status_code == 429:
                     SLACK_ERROR.send_message(
                         (
