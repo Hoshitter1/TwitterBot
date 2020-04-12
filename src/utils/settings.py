@@ -1,5 +1,6 @@
 import os
 from typing import List, Tuple
+import random
 
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -71,7 +72,7 @@ TARGET_KEYWORD_AND_IMPORTANCE: List[Tuple[str, int]] = [
     ('デプロイ', 1),
     ('AWS', 1),
     ('GCP', 1),
-    ('vscod', 1),
+    ('vscode', 1),
     ('WEB系エンジニア', 2),
     ('フリーランスエンジニア', 4),
     ('SES', 1),
@@ -88,10 +89,16 @@ TARGET_KEYWORD_AND_IMPORTANCE: List[Tuple[str, int]] = [
 # Client
 REQUEST_LIMIT_RECOVERY_TIME_IN_SECOND = 60 * 15
 RETRY_NUM = 3
-LIKE_LIMIT_PER_DAY = 150
 
 
-# Settings for logics
+# Settings for logic
 DUMPED_FILE = 'target_lists/dumped_users.txt'
-DB_LIKES = 50
-NUM_PER_BATCH = 100
+NUM_PER_BATCH = 15
+LIKE_LIMIT_PER_LOOP = random.randint(15, 30)
+DB_LIKES = 10
+KEYWORD_LIKES = LIKE_LIMIT_PER_LOOP - DB_LIKES
+
+
+# Set time for bot to wait so Twitter won't think this is bot
+WAIT_FROM_IN_SEC = 60*60  # An hour
+WAIT_TO_IN_SEC = 60*60*12  # 12 hours

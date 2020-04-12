@@ -2,6 +2,7 @@ import asyncio
 import os
 from dataclasses import dataclass
 from typing import Set, List
+import random
 
 from tweepy.models import User as user_account
 from tweepy.error import TweepError
@@ -12,7 +13,12 @@ from clients import (
     SLACK_ERROR,
 )
 from utils.functions import parse_target_users
-from utils.settings import DUMPED_FILE, NUM_PER_BATCH
+from utils.settings import (
+    DUMPED_FILE,
+    NUM_PER_BATCH,
+    WAIT_FROM_IN_SEC,
+    WAIT_TO_IN_SEC,
+)
 from .base import LogicBase
 from .errors import LogicErrorFileNotFound, LogicError
 
@@ -115,7 +121,7 @@ class UserLogic(LogicBase):
                 raise e
             for user_batch in user_batches:
                 cls_instance.save_batches(user_batch)
-                await asyncio.sleep(1)
+                await asyncio.sleep(random.randint(WAIT_FROM_IN_SEC, WAIT_TO_IN_SEC))
             with open(DUMPED_FILE, mode='a') as f:
                 f.write(f'{famous_guy}\n')
         SLACK_INFO.send_message('****[IMPORTANT]The whole process of registering users ended!*****')

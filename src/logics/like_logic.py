@@ -17,6 +17,9 @@ from utils.settings import (
     DUMPED_FILE,
     DB_LIKES,
     LIKE_LIMIT_PER_DAY,
+    WAIT_FROM_IN_SEC,
+    WAIT_TO_IN_SEC,
+    KEYWORD_LIKES,
 )
 from .base import LogicBase
 from .errors import LogicError
@@ -200,14 +203,12 @@ class LikeLogic(LogicBase):
                 )
                 SLACK_ERROR.send_message(e.with_traceback(tb))
                 raise e
-            total_likes_by_keyword = int(LIKE_LIMIT_PER_DAY - cls_instance.total_likes)
             random_keywords_and_importance: List[Tuple[str, int]] = random.sample(
                 TARGET_KEYWORD_AND_IMPORTANCE,
                 len(TARGET_KEYWORD_AND_IMPORTANCE)
             )
             for keyword, importance in random_keywords_and_importance:
-                await asyncio.sleep(1)
-                like_num = int(total_likes_by_keyword * importance / len(TARGET_KEYWORD_AND_IMPORTANCE))
+                like_num = int(KEYWORD_LIKES * importance / len(TARGET_KEYWORD_AND_IMPORTANCE))
                 try:
                     cls_instance.like_from_keyword(keyword, like_num)
                 except TweepError as e:
@@ -231,3 +232,4 @@ class LikeLogic(LogicBase):
                     )
                     SLACK_ERROR.send_message(e.with_traceback(tb))
                     raise e
+            await asyncio.sleep(random.randint(WAIT_FROM_IN_SEC, WAIT_TO_IN_SEC))
